@@ -17,6 +17,13 @@ The experiment is fully controlled: one architecture (SimpleCNN), one optimiser,
 │   └── phase1-baseline-final.ipynb        # Full-dataset ceiling (COMPLETE ✅)
 ├── phase2-random-subsampling/
 │   └── phase2_random_subsampling.py       # Random subset floor (COMPLETE ✅)
+├── phase3-class-balanced/
+│   └── phase3-class-balanced.ipynb        # Equal per-class quota (COMPLETE ✅)
+├── phase4-kmeans/
+│   ├── phase-4-k-means.ipynb              # K-means coreset selection (COMPLETE ✅)
+│   ├── results/                           # per-seed results, paired stats, manifest
+│   ├── figures/                           # 8 figures
+│   └── selected_indices/                  # 50 JSON files — GPU-free reproduction
 ├── .gitignore
 └── README.md
 ```
@@ -87,20 +94,60 @@ Trains SimpleCNN on randomly sampled tiny subsets. This is the naive baseline th
  
 ---
  
-### Phase 3: Class-Balanced Selection 🔲 PENDING
+### Phase 3: Class-Balanced Selection ✅ COMPLETE
  
-Fixes random sampling's key weakness accidental class imbalance at tiny sizes
-by drawing an equal number of examples from every class. Isolates how much of
-the random baseline's weakness is purely due to imbalance vs which examples are chosen.
+Fixes random sampling's most obvious weakness — accidental class imbalance at tiny sizes — by drawing an equal number of examples from every class. Selection *within* each class remains random, so this phase isolates the balance effect alone.
  
+**MNIST** (ceiling: 98.98%)
+ 
+| Subset | Images | Top-1 Mean | ± Std | Δ vs Phase 2 |
+|--------|--------|-----------|-------|--------------|
+| 0.2% | 120 (12/class) | 25.65% | 5.18% | +1.34 |
+| 0.5% | 300 (30/class) | 90.19% | 1.72% | +8.16 |
+| 1% | 600 (60/class) | 94.06% | 0.92% | −0.48 |
+| 2% | 1200 (120/class) | 95.06% | 1.82% | −0.62 |
+| 5% | 3000 (300/class) | **96.45%** | 0.81% | −0.42 |
+ 
+**CIFAR-10** (ceiling: 80.93%)
+ 
+| Subset | Images | Top-1 Mean | ± Std | Δ vs Phase 2 |
+|--------|--------|-----------|-------|--------------|
+| 0.2% | 100 (10/class) | 23.33% | 1.30% | +0.04 |
+| 0.5% | 250 (25/class) | 33.03% | 0.96% | −0.09 |
+| 1% | 500 (50/class) | 40.50% | 2.75% | +0.42 |
+| 2% | 1000 (100/class) | 50.28% | 2.12% | +2.28 |
+| 5% | 2500 (250/class) | **57.00%** | 1.44% | −1.05 |
+
 ---
  
-### Phase 4: K-Means / Coverage Selection 🔲 PENDING
+### Phase 4: K-Means Coreset Selection ✅ COMPLETE
  
-Selects examples that maximise diversity across the feature space, reducing
-redundancy within each subset. Tests the coreset hypothesis: a well-spread
-subset outperforms a random or merely balanced one.
+The first phase to choose images by their **content** rather than at random. Each training image is passed through the frozen Phase 1 network to obtain a 256-dimensional penultimate-layer embedding. K-means is then run *within each class*, with k set to the Phase 3 per-class quota, and the real image nearest each cluster centroid is kept.
  
+Because the per-class quota is identical to Phase 3, the difference (Phase 4 − Phase 3) isolates **intelligent within-class selection** with the balance effect already subtracted out.
+ 
+Method follows the coreset / k-centers framing of [Coleman et al. (2020)](https://arxiv.org/abs/1906.11829). Embeddings are extracted with the evaluation transform (no augmentation) and L2-normalised before clustering; run seed *s* uses the seed-*s* Phase 1 checkpoint.
+ 
+**MNIST** (ceiling: 98.98%)
+ 
+| Subset | Images | Top-1 Mean | ± Std | Δ vs Phase 3 |
+|--------|--------|-----------|-------|--------------|
+| 0.2% | 120 | 29.29% | 6.69% | +3.64 |
+| 0.5% | 300 | 87.30% | 3.43% | −2.89 |
+| 1% | 600 | 93.85% | 1.14% | −0.21 |
+| 2% | 1200 | 93.03% | 2.97% | −2.03 |
+| 5% | 3000 | **97.25%** | 0.65% | +0.80 |
+ 
+**CIFAR-10** (ceiling: 80.93%)
+ 
+| Subset | Images | Top-1 Mean | ± Std | Δ vs Phase 3 | Paired *p* |
+|--------|--------|-----------|-------|--------------|-----------|
+| 0.2% | 100 | 26.16% | 3.36% | +2.83 | 0.181 |
+| 0.5% | 250 | 34.93% | 2.26% | +1.90 | 0.166 |
+| 1% | 500 | 42.84% | 1.64% | +2.34 | 0.341 |
+| 2% | 1000 | 49.35% | 1.82% | −0.93 | 0.511 |
+| 5% | 2500 | **56.74%** | 0.86% | −0.26 | 0.797 |
+
 ---
  
 ### Phase 5: Hard-Example Mining 🔲 PENDING
