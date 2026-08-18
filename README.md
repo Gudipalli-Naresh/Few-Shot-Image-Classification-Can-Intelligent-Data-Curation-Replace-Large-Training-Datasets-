@@ -150,18 +150,35 @@ Method follows the coreset / k-centers framing of [Coleman et al. (2020)](https:
 
 ---
  
-### Phase 5: Hard-Example Mining 🔲 PENDING
+### Phase 5: Hard-Example Mining ✅ COMPLETE
  
-Scores examples by difficulty and selects the most informative ones.
-Reuses Phase 1 seed-42 checkpoints for cheap scoring.
-Includes a guard against the over-pruning failure mode identified by Paul et al. (2021).
+Scores examples by forgetting events (Toneva et al. 2019)  the number of times an example
+transitions from correctly to incorrectly classified during training  and selects the
+hardest-scoring examples. Uses all five Phase 1 seed checkpoints (not seed-42 alone). The
+diagnostic identified a sentinel-collapse failure mode: at small subset sizes, "hardest"
+degenerates into a random draw from examples the network never learned at all, rather than a
+meaningful difficulty ranking.
+
+**CIFAR-10** (ceiling: 80.93%)
  
+| Subset | Top-1 Mean | ± Std | vs. random (Phase 2) |
+|---|---|---|---|
+| 0.2% | 10.11% | 0.79% | −13.18 pp |
+| 0.5% | 9.89% | 1.45% | −23.23 pp |
+| 1% | 15.01% | 1.76% | −25.07 pp |
+| 2% | 22.42% | 2.12% | −25.58 pp |
+| 5% | 38.06% | 2.35% | −19.99 pp |
+ 
+**MNIST** (ceiling: 98.98%)
+ 
+| Subset | Top-1 Mean | ± Std | vs. random (Phase 2) |
+|---|---|---|---|
+| 0.2% | 17.09% | 4.83% | −7.22 pp |
+| 0.5% | 39.07% | 9.13% | −42.96 pp |
+| 1% | 65.43% | 10.21% | −29.11 pp |
+| 2% | 70.57% | 10.59% | −25.11 pp |
+| 5% | 94.32% | 3.81% | −2.55 pp |
 ---
- 
-### Phase 6: Analysis & Synthesis 🔲 PENDING
- 
-Cross-phase comparison, per-class analysis, cost–benefit discussion
-and a direct evidenced answer to the dissertation's title question.
  
 ---
  
